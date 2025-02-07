@@ -71,6 +71,9 @@ Send the command `/stop` to stop receiving polls.
 2. Set the environment variables `BOT_TOKEN` and `WEBHOOK_URL`.
 3. Deploy the repository.
 
+## Telegram Bot
+You can use the bot here: [Aptitude Telegram Bot](https://t.me/Aptitude_Questions_Bot)
+
 ## License
 This project is licensed under the MIT License.
 
