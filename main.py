@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes, JobQueue
 
 logging.basicConfig(level=logging.INFO)
 
@@ -79,10 +79,8 @@ async def check_and_send_polls(context: ContextTypes.DEFAULT_TYPE):
             await send_poll_to_user(chat_id, context)
             active_users[chat_id] = now.isoformat()
 
-async def poll_scheduler(application: Application):
-    while True:
-        await check_and_send_polls(application)
-        await asyncio.sleep(60)  
+async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
+    await check_and_send_polls(context)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -151,13 +149,16 @@ def initialize_application():
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
+    
+    # Schedule the poll check every minute
+    application.job_queue.run_repeating(poll_scheduler, interval=60, first=10)
 
 @app.on_event("startup")
 async def startup_event():
     initialize_application()
     await application.initialize()
     await application.start()
-    asyncio.create_task(poll_scheduler(application))
+    await application.updater.start_polling()
     logging.info("Bot started...")
 
 if __name__ == "__main__":
