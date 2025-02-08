@@ -122,8 +122,14 @@ async def webhook(request: Request):
 @app.get("/set_webhook")
 async def set_webhook():
     webhook_url = f"{WEBHOOK_URL}/webhook"
-    await application.bot.set_webhook(url=webhook_url)
-    return {"message": f"Webhook set to {webhook_url}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook", json={"url": webhook_url})
+        if response.status_code == 200:
+            logging.info(f"Webhook successfully set to {webhook_url}")
+            return {"message": f"Webhook set to {webhook_url}"}
+        else:
+            logging.error(f"Failed to set webhook: {response.text}")
+            return {"error": response.text}
 
 @app.get("/")
 async def root():
@@ -150,7 +156,6 @@ def initialize_application():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
     
-    # Schedule the poll check every minute
     application.job_queue.run_repeating(poll_scheduler, interval=60, first=10)
 
 @app.on_event("startup")
@@ -158,8 +163,10 @@ async def startup_event():
     initialize_application()
     await application.initialize()
     await application.start()
-    await application.updater.start_polling()
-    logging.info("Bot started...")
+    
+    await set_webhook()
+    
+    logging.info("Bot started and webhook set successfully.")
 
 if __name__ == "__main__":
     import uvicorn
