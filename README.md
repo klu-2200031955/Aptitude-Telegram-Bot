@@ -17,6 +17,7 @@ The bot is deployed using [Render](https://render.com/) and uses FastAPI to hand
 - **Python** (async programming with `asyncio`)
 - **FastAPI** (for webhook handling)
 - **httpx** (for making API requests)
+- **pydantic** (for data validation and parsing)
 - **python-telegram-bot** (for Telegram bot integration)
 - **Uvicorn** (to run the FastAPI application)
 
@@ -79,4 +80,3 @@ This project is licensed under the MIT License.
 
 ## Author
 [Samudrala Venkata Pavan Tarun Kumar](https://github.com/klu-2200031955)
-
