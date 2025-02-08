@@ -9,6 +9,7 @@ This is a Telegram bot that sends aptitude-based quiz polls every hour to users 
 - Supports group and private chats.
 - Users can start and stop receiving polls using `/start` and `/stop` commands.
 - Uses FastAPI to handle webhooks.
+- Includes a self-ping mechanism to keep the bot alive on Render.
 
 ## Deployment
 The bot is deployed using [Render](https://render.com/) and uses FastAPI to handle webhooks.
@@ -17,7 +18,6 @@ The bot is deployed using [Render](https://render.com/) and uses FastAPI to hand
 - **Python** (async programming with `asyncio`)
 - **FastAPI** (for webhook handling)
 - **httpx** (for making API requests)
-- **pydantic** (for data validation and parsing)
 - **python-telegram-bot** (for Telegram bot integration)
 - **Uvicorn** (to run the FastAPI application)
 
@@ -59,6 +59,7 @@ The bot is deployed using [Render](https://render.com/) and uses FastAPI to hand
 | GET    | `/`          | Checks if the bot is running      |
 | GET    | `/set_webhook` | Sets the webhook for Telegram     |
 | POST   | `/webhook`   | Processes incoming Telegram updates |
+| GET    | `/ping`      | Self-ping to keep the bot alive   |
 
 ## Usage
 ### Start Receiving Polls
@@ -71,6 +72,7 @@ Send the command `/stop` to stop receiving polls.
 1. Create a new **Web Service** on Render.
 2. Set the environment variables `BOT_TOKEN` and `WEBHOOK_URL`.
 3. Deploy the repository.
+4. Ensure **UptimeRobot** is configured to ping the `/ping` endpoint every 5 minutes to keep the bot active.
 
 ## Telegram Bot
 You can use the bot here: [Aptitude Telegram Bot](https://t.me/Aptitude_Questions_Bot)
@@ -80,3 +82,4 @@ This project is licensed under the MIT License.
 
 ## Author
 [Samudrala Venkata Pavan Tarun Kumar](https://github.com/klu-2200031955)
+
