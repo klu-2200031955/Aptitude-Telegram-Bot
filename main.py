@@ -32,7 +32,7 @@ def escape_markdown(text):
 
 
 async def fetch_question():
-    API_URL = 'https://aptitude-api.vercel.app/Random'
+    API_URL = 'https://aptitude-api-one.vercel.app/api/random'
     for attempt in range(RETRY_ATTEMPTS):
         try:
             async with httpx.AsyncClient() as client:
