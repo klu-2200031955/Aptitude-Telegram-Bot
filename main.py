@@ -141,9 +141,34 @@ async def self_ping(context: ContextTypes.DEFAULT_TYPE):
         except httpx.RequestError as e:
             logging.error(f"Self-ping error: {e}")
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return Response(content="Bot is alive", status_code=200)
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Bot Status</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 50px;
+            }
+            h1 {
+                color: #4CAF50;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Bot is Alive</h1>
+        <p>The Telegram bot is running and active.</p>
+    </body>
+    </html>
+    """
+
+@app.head("/")
+async def head_root():
+    return Response(status_code=200)
 
 @app.get("/active_users")
 async def get_active_users():
