@@ -4,6 +4,7 @@ import asyncio
 import httpx
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, JobQueue
 
