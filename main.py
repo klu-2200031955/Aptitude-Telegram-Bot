@@ -186,6 +186,22 @@ async def receive_update(request: Request):
 async def ping():
     return {"status": "ok"}
 
+@app.post("/broadcast")
+async def broadcast_message(request: Request):
+    data = await request.json()
+    message = data.get("message")
+    if not message:
+        raise HTTPException(status_code=400, detail="Message field is required.")
+    
+    for chat_id in active_users.keys():
+        try:
+            await application.bot.send_message(chat_id=chat_id, text=message)
+        except Exception as e:
+            logging.error(f"Failed to send message to {chat_id}: {e}")
+    
+    return {"status": "Message sent to all active users."}
+    
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=2032)
