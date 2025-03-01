@@ -4,7 +4,6 @@ import asyncio
 import httpx
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, JobQueue
 
@@ -12,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-SELF_PING_URL = f"{WEBHOOK_URL}/ping" 
+SELF_PING_URL = f"{WEBHOOK_URL}/ping"
 API_URL = 'https://aptitude-api-one.vercel.app/api/random'
 RESET_URL = 'https://aptitude-api-one.vercel.app/api/reset'
 
@@ -109,22 +108,27 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_users.pop(chat_id, None)
     await update.message.reply_text("You will no longer receive polls.")
 
+async def set_webhook():
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, json={"url": WEBHOOK_URL})
+        logging.info(f"Webhook response: {response.json()}")
+
 @app.on_event("startup")
 async def startup_event():
-    initialize_application()
-    await application.initialize()
-    await application.start()
-    await set_webhook()
-    logging.info("Bot started and webhook set successfully.")
-
-def initialize_application():
     global application
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
+
     job_queue = application.job_queue
-    job_queue.run_repeating(poll_scheduler, interval=60, first=10)  
-    job_queue.run_repeating(self_ping, interval=300, first=20)  
+    job_queue.run_repeating(poll_scheduler, interval=60, first=10)
+    job_queue.run_repeating(self_ping, interval=300, first=20)
+
+    await application.initialize()
+    await application.start()
+    await set_webhook()
+    logging.info("Bot started and webhook set successfully.")
 
 async def self_ping(context: ContextTypes.DEFAULT_TYPE):
     async with httpx.AsyncClient() as client:
@@ -136,6 +140,21 @@ async def self_ping(context: ContextTypes.DEFAULT_TYPE):
                 logging.warning(f"Self-ping failed: {response.text}")
         except httpx.RequestError as e:
             logging.error(f"Self-ping error: {e}")
+
+@app.get("/")
+async def root():
+    return {"message": "Bot is running!"}
+
+@app.post("/webhook")
+async def receive_update(request: Request):
+    update = await request.json()
+    if application:
+        await application.update_queue.put(Update.de_json(update, application.bot))
+    return Response(content="OK", status_code=200)
+
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
