@@ -86,15 +86,13 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="MarkdownV2"
     )
 
-async def check_and_send_polls(context: ContextTypes.DEFAULT_TYPE):
+async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now()
     for chat_id, details in list(active_users.items()):
         last_poll_time = datetime.fromisoformat(details["last_poll_time"])
         if now - last_poll_time >= POLL_INTERVAL:
             await send_poll_to_user(chat_id, context)
-
-async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
-    await check_and_send_polls(context)
+            active_users[chat_id]["last_poll_time"] = now.isoformat()  # Update last poll time
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -106,8 +104,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    active_users.pop(chat_id, None)
-    await update.message.reply_text("You will no longer receive polls.")
+    if chat_id in active_users:
+        active_users.pop(chat_id)
+        await update.message.reply_text("You will no longer receive polls.")
+    else:
+        await update.message.reply_text("You are not a subscriber to the bot.")
 
 async def set_webhook():
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
@@ -123,7 +124,7 @@ async def startup_event():
     application.add_handler(CommandHandler("stop", stop))
 
     job_queue = application.job_queue
-    job_queue.run_repeating(poll_scheduler, interval=3600, first=10)
+    job_queue.run_repeating(poll_scheduler, interval=60, first=10)  # Check every minute
     job_queue.run_repeating(self_ping, interval=300, first=20)
 
     await application.initialize()
@@ -200,7 +201,6 @@ async def broadcast_message(request: Request):
             logging.error(f"Failed to send message to {chat_id}: {e}")
     
     return {"status": "Message sent to all active users."}
-    
 
 if __name__ == "__main__":
     import uvicorn
