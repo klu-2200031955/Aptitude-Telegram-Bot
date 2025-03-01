@@ -85,8 +85,6 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="MarkdownV2"
     )
 
-    active_users[chat_id] = {"last_poll_time": datetime.now().isoformat()}
-
 async def check_and_send_polls(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now()
     for chat_id, details in list(active_users.items()):
@@ -99,7 +97,9 @@ async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    active_users[chat_id] = {"last_poll_time": datetime.now().isoformat()}
+    user_name = update.message.from_user.full_name
+    user_id = update.message.from_user.id
+    active_users[chat_id] = {"user_id": user_id, "user_name": user_name, "last_poll_time": datetime.now().isoformat()}
     await update.message.reply_text("Polls will be sent every hour. Use /stop to stop receiving them.")
     await send_poll_to_user(chat_id, context)
 
@@ -143,7 +143,7 @@ async def self_ping(context: ContextTypes.DEFAULT_TYPE):
 
 @app.get("/")
 async def root():
-    return {"message": "Bot is running!"}
+    return Response(content="Bot is alive", status_code=200)
 
 @app.get("/active_users")
 async def get_active_users():
