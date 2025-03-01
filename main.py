@@ -85,12 +85,12 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="MarkdownV2"
     )
 
-    active_users[chat_id] = datetime.now().isoformat()
+    active_users[chat_id] = {"last_poll_time": datetime.now().isoformat()}
 
 async def check_and_send_polls(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now()
-    for chat_id, last_poll_time_str in list(active_users.items()):
-        last_poll_time = datetime.fromisoformat(last_poll_time_str)
+    for chat_id, details in list(active_users.items()):
+        last_poll_time = datetime.fromisoformat(details["last_poll_time"])
         if now - last_poll_time >= POLL_INTERVAL:
             await send_poll_to_user(chat_id, context)
 
@@ -99,7 +99,7 @@ async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    active_users[chat_id] = datetime.now().isoformat()
+    active_users[chat_id] = {"last_poll_time": datetime.now().isoformat()}
     await update.message.reply_text("Polls will be sent every hour. Use /stop to stop receiving them.")
     await send_poll_to_user(chat_id, context)
 
@@ -144,6 +144,10 @@ async def self_ping(context: ContextTypes.DEFAULT_TYPE):
 @app.get("/")
 async def root():
     return {"message": "Bot is running!"}
+
+@app.get("/active_users")
+async def get_active_users():
+    return active_users
 
 @app.post("/webhook")
 async def receive_update(request: Request):
