@@ -123,7 +123,7 @@ async def startup_event():
     application.add_handler(CommandHandler("stop", stop))
 
     job_queue = application.job_queue
-    job_queue.run_repeating(poll_scheduler, interval=60, first=10)
+    job_queue.run_repeating(poll_scheduler, interval=3600, first=10)
     job_queue.run_repeating(self_ping, interval=300, first=20)
 
     await application.initialize()
