@@ -20,7 +20,8 @@ app = FastAPI()
 application = None
 
 POLL_INTERVAL = timedelta(hours=1)
-active_users = {}
+users = {} 
+active_users = {}  
 
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 5
@@ -92,13 +93,17 @@ async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
         last_poll_time = datetime.fromisoformat(details["last_poll_time"])
         if now - last_poll_time >= POLL_INTERVAL:
             await send_poll_to_user(chat_id, context)
-            active_users[chat_id]["last_poll_time"] = now.isoformat()  # Update last poll time
+            active_users[chat_id]["last_poll_time"] = now.isoformat()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    user_name = update.message.from_user.full_name
+    user_name = update.message.from_user.username or "Unknown"
+    full_name = update.message.from_user.full_name
     user_id = update.message.from_user.id
-    active_users[chat_id] = {"user_id": user_id, "user_name": user_name, "last_poll_time": datetime.now().isoformat()}
+    
+    users[chat_id] = {"user_id": user_id, "user_name": user_name, "full_name": full_name}
+    active_users[chat_id] = {"user_id": user_id, "user_name": user_name, "full_name": full_name, "last_poll_time": datetime.now().isoformat()}
+    
     await update.message.reply_text("Polls will be sent every hour. Use /stop to stop receiving them.")
     await send_poll_to_user(chat_id, context)
 
@@ -122,9 +127,9 @@ async def startup_event():
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
-
+    
     job_queue = application.job_queue
-    job_queue.run_repeating(poll_scheduler, interval=60, first=10)  # Check every minute
+    job_queue.run_repeating(poll_scheduler, interval=60, first=10)
     job_queue.run_repeating(self_ping, interval=300, first=20)
 
     await application.initialize()
@@ -171,6 +176,10 @@ async def root():
 @app.head("/")
 async def head_root():
     return Response(status_code=200)
+
+@app.get("/users")
+async def get_all_users():
+    return users
 
 @app.get("/active_users")
 async def get_active_users():
