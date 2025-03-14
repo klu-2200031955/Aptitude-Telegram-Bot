@@ -13,15 +13,16 @@ logging.basicConfig(level=logging.INFO)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 SELF_PING_URL = f"{WEBHOOK_URL}/ping"
-API_URL = 'https://aptitude-api-one.vercel.app/api/random'
-RESET_URL = 'https://aptitude-api-one.vercel.app/api/reset'
+API_BASE_URL = os.getenv("API_URL")
+API_URL = f"{API_BASE_URL}/api/random"
+RESET_URL = f"{API_BASE_URL}/api/reset"
 
 app = FastAPI()
 application = None
 
 POLL_INTERVAL = timedelta(hours=1)
-users = {} 
-active_users = {}  
+users = {}
+active_users = {}
 
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 5
@@ -200,12 +201,12 @@ async def ping():
 async def broadcast_message(request: Request):
     data = await request.json()
     message = data.get("message")
-    chat_id = data.get("chat_id")  # Optional
+    chat_id = data.get("chat_id")
 
     if not message:
         raise HTTPException(status_code=400, detail="Message field is required.")
 
-    if chat_id:  
+    if chat_id:
         try:
             await application.bot.send_message(chat_id=chat_id, text=message)
             return {"status": f"Message sent to user {chat_id}."}
@@ -220,7 +221,6 @@ async def broadcast_message(request: Request):
             logging.error(f"Failed to send message to {user_chat_id}: {e}")
 
     return {"status": "Message sent to all users."}
-
 
 if __name__ == "__main__":
     import uvicorn
