@@ -20,7 +20,7 @@ RESET_URL = f"{API_BASE_URL}/api/reset"
 app = FastAPI()
 application = None
 
-POLL_INTERVAL = timedelta(hours=1)
+POLL_INTERVAL = timedelta(houres=1)
 users = {}
 active_users = {}
 
@@ -44,25 +44,40 @@ async def reset_questions():
         except httpx.RequestError as e:
             logging.error(f"Error resetting questions: {e}")
 
-async def fetch_question():
+async def fetch_question(chat_id):
     for attempt in range(RETRY_ATTEMPTS):
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(API_URL)
                 response.raise_for_status()
                 data = response.json()
+
                 if data.get("message") == "No more questions available! Reset needed.":
                     logging.warning("No more questions. Triggering reset.")
                     await reset_questions()
                     return None
+
+                question_id = data.get("_id")
+                if chat_id in active_users:
+                    if question_id in active_users[chat_id]["asked_questions"]:
+                        logging.info(f"Question {_id} already sent to {chat_id}, fetching a new one.")
+                        continue  # Try fetching a new question
+                    active_users[chat_id]["asked_questions"].append(question_id)
+
                 return data
         except httpx.RequestError as e:
             logging.error(f"Attempt {attempt + 1}: Error fetching question: {e}")
             await asyncio.sleep(RETRY_DELAY)
+    
+    # If no new question was found, reset asked questions list and try again
+    if chat_id in active_users:
+        active_users[chat_id]["asked_questions"].clear()
+        return await fetch_question(chat_id)
+    
     return None
 
 async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
-    question_data = await fetch_question()
+    question_data = await fetch_question(chat_id)
     if not question_data:
         return
 
@@ -76,7 +91,7 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         chat_id=chat_id,
         question=question,
         options=options,
-        is_anonymous=True,
+        is_anonymous=False,  # Removed anonymous feature
         type='quiz',
         correct_option_id=correct_option_id,
     )
@@ -102,19 +117,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = update.message.from_user.full_name
     user_id = update.message.from_user.id
     
-    users[chat_id] = {"user_id": user_id, "user_name": user_name, "full_name": full_name}
-    active_users[chat_id] = {"user_id": user_id, "user_name": user_name, "full_name": full_name, "last_poll_time": datetime.now().isoformat()}
+    if chat_id not in users:
+        users[chat_id] = {
+            "user_id": user_id,
+            "user_name": user_name,
+            "full_name": full_name,
+            "asked_questions": []
+        }
+    
+    active_users[chat_id] = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "full_name": full_name,
+        "last_poll_time": datetime.now().isoformat(),
+        "asked_questions": users[chat_id]["asked_questions"]  
+    }
     
     await update.message.reply_text("Polls will be sent every hour. Use /stop to stop receiving them.")
     await send_poll_to_user(chat_id, context)
 
+
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in active_users:
-        active_users.pop(chat_id)
-        await update.message.reply_text("You will no longer receive polls.")
+        asked_questions = active_users[chat_id]["asked_questions"]
+        del active_users[chat_id]  
+        users[chat_id]["asked_questions"] = asked_questions  
+        await update.message.reply_text("You will no longer receive polls, but your progress is saved.")
     else:
         await update.message.reply_text("You are not a subscriber to the bot.")
+
+
 
 async def set_webhook():
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
@@ -196,31 +229,6 @@ async def receive_update(request: Request):
 @app.get("/ping")
 async def ping():
     return {"status": "ok"}
-
-@app.post("/broadcast")
-async def broadcast_message(request: Request):
-    data = await request.json()
-    message = data.get("message")
-    chat_id = data.get("chat_id")
-
-    if not message:
-        raise HTTPException(status_code=400, detail="Message field is required.")
-
-    if chat_id:
-        try:
-            await application.bot.send_message(chat_id=chat_id, text=message)
-            return {"status": f"Message sent to user {chat_id}."}
-        except Exception as e:
-            logging.error(f"Failed to send message to {chat_id}: {e}")
-            return {"status": f"Failed to send message to user {chat_id}."}
-            
-    for user_chat_id in users.keys():
-        try:
-            await application.bot.send_message(chat_id=user_chat_id, text=message)
-        except Exception as e:
-            logging.error(f"Failed to send message to {user_chat_id}: {e}")
-
-    return {"status": "Message sent to all users."}
 
 if __name__ == "__main__":
     import uvicorn
