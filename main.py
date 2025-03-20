@@ -20,7 +20,7 @@ RESET_URL = f"{API_BASE_URL}/api/reset"
 app = FastAPI()
 application = None
 
-POLL_INTERVAL = timedelta(houres=1)
+POLL_INTERVAL = timedelta(hours=1)
 users = {}
 active_users = {}
 
