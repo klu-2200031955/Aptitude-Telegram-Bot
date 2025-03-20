@@ -61,12 +61,14 @@ A Telegram bot that sends aptitude-based quiz polls every hour to users and grou
 
 ## 🔗 API Endpoints  
 
-| Method | Endpoint       | Description                         |
-| ------ | -------------- | ----------------------------------- |
-| GET    | `/`            | Checks if the bot is running       |
-| GET    | `/set_webhook` | Sets the webhook for Telegram      |
-| POST   | `/webhook`     | Processes incoming Telegram updates |
-| GET    | `/ping`        | Self-ping to keep the bot alive    |
+| Method | Endpoint        | Description                                   |
+| ------ | -------------- | --------------------------------------------- |
+| GET    | `/`            | Checks if the bot is running                  |
+| GET    | `/set_webhook` | Sets the webhook for Telegram                 |
+| POST   | `/webhook`     | Processes incoming Telegram updates           |
+| GET    | `/ping`        | Self-ping to keep the bot alive               |
+| GET    | `/users`       | Returns a list of all users                   |
+| GET    | `/active_users`| Returns a list of users currently receiving polls |
 
 ## 📌 Usage  
 
@@ -93,4 +95,4 @@ This project is licensed under the **MIT License**.
 
 ## 👨‍💻 Author  
 
-[Samudrala Venkata Pavan Tarun Kumar](https://github.com/klu-2200031955) 
+[Samudrala Venkata Pavan Tarun Kumar](https://github.com/klu-2200031955)  
