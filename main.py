@@ -207,17 +207,58 @@ async def root():
     </html>
     """
 
+@app.post("/broadcast")
+ async def broadcast_message(request: Request):
+     data = await request.json()
+     message = data.get("message")
+     chat_id = data.get("chat_id")
+ 
+     if not message:
+         raise HTTPException(status_code=400, detail="Message field is required.")
+ 
+     if chat_id:
+         try:
+             await application.bot.send_message(chat_id=chat_id, text=message)
+             return {"status": f"Message sent to user {chat_id}."}
+         except Exception as e:
+             logging.error(f"Failed to send message to {chat_id}: {e}")
+             return {"status": f"Failed to send message to user {chat_id}."}
+             
+     for user_chat_id in users.keys():
+         try:
+             await application.bot.send_message(chat_id=user_chat_id, text=message)
+         except Exception as e:
+             logging.error(f"Failed to send message to {user_chat_id}: {e}")
+ 
+     return {"status": "Message sent to all users."}
+
 @app.head("/")
 async def head_root():
     return Response(status_code=200)
 
-@app.get("/users")
+@app.get("/users", response_class=HTMLResponse)
 async def get_all_users():
-    return users
+    if not users:
+        return "<h2>No users found.</h2>"
+    
+    table_html = "<h2>Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Asked Questions</th></tr>"
+    for chat_id, data in users.items():
+        asked_questions = "<br>".join(map(str, data['asked_questions']))
+        table_html += f"<tr><td>{chat_id}</td><td>{data['user_id']}</td><td>{data['user_name']}</td><td>{data['full_name']}</td><td>{asked_questions}</td></tr>"
+    table_html += "</table>"
+    return table_html
 
-@app.get("/active_users")
+@app.get("/active_users", response_class=HTMLResponse)
 async def get_active_users():
-    return active_users
+    if not active_users:
+        return "<h2>No active users found.</h2>"
+    
+    table_html = "<h2>Active Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Last Poll Time</th><th>Asked Questions</th></tr>"
+    for chat_id, data in active_users.items():
+        asked_questions = "<br>".join(map(str, data['asked_questions']))
+        table_html += f"<tr><td>{chat_id}</td><td>{data['user_id']}</td><td>{data['user_name']}</td><td>{data['full_name']}</td><td>{data['last_poll_time']}</td><td>{asked_questions}</td></tr>"
+    table_html += "</table>"
+    return table_html
 
 @app.post("/webhook")
 async def receive_update(request: Request):
