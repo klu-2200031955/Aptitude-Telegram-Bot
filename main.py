@@ -208,14 +208,14 @@ async def root():
     """
 
 @app.post("/broadcast")
- async def broadcast_message(request: Request):
+async def broadcast_message(request: Request):
      data = await request.json()
      message = data.get("message")
      chat_id = data.get("chat_id")
- 
+    
      if not message:
          raise HTTPException(status_code=400, detail="Message field is required.")
- 
+    
      if chat_id:
          try:
              await application.bot.send_message(chat_id=chat_id, text=message)
@@ -229,7 +229,7 @@ async def root():
              await application.bot.send_message(chat_id=user_chat_id, text=message)
          except Exception as e:
              logging.error(f"Failed to send message to {user_chat_id}: {e}")
- 
+    
      return {"status": "Message sent to all users."}
 
 @app.head("/")
