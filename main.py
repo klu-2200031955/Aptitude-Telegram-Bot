@@ -3,7 +3,7 @@ import logging
 import asyncio
 import httpx
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, JobQueue
@@ -60,20 +60,19 @@ async def fetch_question(chat_id):
                 question_id = data.get("_id")
                 if chat_id in active_users:
                     if question_id in active_users[chat_id]["asked_questions"]:
-                        logging.info(f"Question {_id} already sent to {chat_id}, fetching a new one.")
-                        continue  # Try fetching a new question
+                        logging.info(f"Question {question_id} already sent to {chat_id}, fetching a new one.")
+                        continue
                     active_users[chat_id]["asked_questions"].append(question_id)
 
                 return data
         except httpx.RequestError as e:
             logging.error(f"Attempt {attempt + 1}: Error fetching question: {e}")
             await asyncio.sleep(RETRY_DELAY)
-    
-    # If no new question was found, reset asked questions list and try again
+
     if chat_id in active_users:
         active_users[chat_id]["asked_questions"].clear()
         return await fetch_question(chat_id)
-    
+
     return None
 
 async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
@@ -91,7 +90,7 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         chat_id=chat_id,
         question=question,
         options=options,
-        is_anonymous=False,  # Removed anonymous feature
+        is_anonymous=False,
         type='quiz',
         correct_option_id=correct_option_id,
     )
@@ -116,7 +115,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.username or "Unknown"
     full_name = update.message.from_user.full_name
     user_id = update.message.from_user.id
-    
+
     if chat_id not in users:
         users[chat_id] = {
             "user_id": user_id,
@@ -124,30 +123,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "full_name": full_name,
             "asked_questions": []
         }
-    
+
     active_users[chat_id] = {
         "user_id": user_id,
         "user_name": user_name,
         "full_name": full_name,
         "last_poll_time": datetime.now().isoformat(),
-        "asked_questions": users[chat_id]["asked_questions"]  
+        "asked_questions": users[chat_id]["asked_questions"]
     }
-    
+
     await update.message.reply_text("Polls will be sent every hour. Use /stop to stop receiving them.")
     await send_poll_to_user(chat_id, context)
-
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     if chat_id in active_users:
         asked_questions = active_users[chat_id]["asked_questions"]
-        del active_users[chat_id]  
-        users[chat_id]["asked_questions"] = asked_questions  
+        del active_users[chat_id]
+        users[chat_id]["asked_questions"] = asked_questions
         await update.message.reply_text("You will no longer receive polls, but your progress is saved.")
     else:
         await update.message.reply_text("You are not a subscriber to the bot.")
-
-
 
 async def set_webhook():
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
@@ -161,7 +157,7 @@ async def startup_event():
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
-    
+
     job_queue = application.job_queue
     job_queue.run_repeating(poll_scheduler, interval=60, first=10)
     job_queue.run_repeating(self_ping, interval=300, first=20)
@@ -190,14 +186,8 @@ async def root():
     <head>
         <title>Bot Status</title>
         <style>
-            body {
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 50px;
-            }
-            h1 {
-                color: #4CAF50;
-            }
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #4CAF50; }
         </style>
     </head>
     <body>
@@ -209,28 +199,28 @@ async def root():
 
 @app.post("/broadcast")
 async def broadcast_message(request: Request):
-     data = await request.json()
-     message = data.get("message")
-     chat_id = data.get("chat_id")
-    
-     if not message:
-         raise HTTPException(status_code=400, detail="Message field is required.")
-    
-     if chat_id:
-         try:
-             await application.bot.send_message(chat_id=chat_id, text=message)
-             return {"status": f"Message sent to user {chat_id}."}
-         except Exception as e:
-             logging.error(f"Failed to send message to {chat_id}: {e}")
-             return {"status": f"Failed to send message to user {chat_id}."}
-             
-     for user_chat_id in users.keys():
-         try:
-             await application.bot.send_message(chat_id=user_chat_id, text=message)
-         except Exception as e:
-             logging.error(f"Failed to send message to {user_chat_id}: {e}")
-    
-     return {"status": "Message sent to all users."}
+    data = await request.json()
+    message = data.get("message")
+    chat_id = data.get("chat_id")
+
+    if not message:
+        raise HTTPException(status_code=400, detail="Message field is required.")
+
+    if chat_id:
+        try:
+            await application.bot.send_message(chat_id=chat_id, text=message)
+            return {"status": f"Message sent to user {chat_id}."}
+        except Exception as e:
+            logging.error(f"Failed to send message to {chat_id}: {e}")
+            return {"status": f"Failed to send message to user {chat_id}."}
+
+    for user_chat_id in users.keys():
+        try:
+            await application.bot.send_message(chat_id=user_chat_id, text=message)
+        except Exception as e:
+            logging.error(f"Failed to send message to {user_chat_id}: {e}")
+
+    return {"status": "Message sent to all users."}
 
 @app.head("/")
 async def head_root():
@@ -240,7 +230,7 @@ async def head_root():
 async def get_all_users():
     if not users:
         return "<h2>No users found.</h2>"
-    
+
     table_html = "<h2>Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Asked Questions</th></tr>"
     for chat_id, data in users.items():
         asked_questions = "<br>".join(map(str, data['asked_questions']))
@@ -252,7 +242,7 @@ async def get_all_users():
 async def get_active_users():
     if not active_users:
         return "<h2>No active users found.</h2>"
-    
+
     table_html = "<h2>Active Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Last Poll Time</th><th>Asked Questions</th></tr>"
     for chat_id, data in active_users.items():
         asked_questions = "<br>".join(map(str, data['asked_questions']))
@@ -270,7 +260,7 @@ async def receive_update(request: Request):
 @app.post("/reset_questions")
 async def reset_user_questions(request: Request):
     data = await request.json()
-    chat_id = data.get("chat_id")  
+    chat_id = data.get("chat_id")
 
     if chat_id:
         if chat_id in users:
@@ -293,4 +283,4 @@ async def ping():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=2032)
+    uvicorn.run("app", host="0.0.0.0", port=2032, reload=True)
