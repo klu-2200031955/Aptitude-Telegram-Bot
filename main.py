@@ -267,6 +267,26 @@ async def receive_update(request: Request):
         await application.update_queue.put(Update.de_json(update, application.bot))
     return Response(content="OK", status_code=200)
 
+@app.post("/reset_questions")
+async def reset_user_questions(request: Request):
+    data = await request.json()
+    chat_id = data.get("chat_id")  
+
+    if chat_id:
+        if chat_id in users:
+            users[chat_id]["asked_questions"] = []
+            if chat_id in active_users:
+                active_users[chat_id]["asked_questions"] = []
+            return {"status": f"Asked questions reset for chat ID {chat_id}."}
+        else:
+            raise HTTPException(status_code=404, detail=f"Chat ID {chat_id} not found.")
+    else:
+        for chat_id in users:
+            users[chat_id]["asked_questions"] = []
+        for chat_id in active_users:
+            active_users[chat_id]["asked_questions"] = []
+        return {"status": "Asked questions reset for all users."}
+
 @app.get("/ping")
 async def ping():
     return {"status": "ok"}
