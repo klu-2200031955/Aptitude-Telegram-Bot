@@ -231,9 +231,9 @@ async def get_all_users():
     if not users:
         return "<h2>No users found.</h2>"
 
-    table_html = "<h2>Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Asked Questions</th></tr>"
+    table_html = "<h2>Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Questions Asked</th></tr>"
     for chat_id, data in users.items():
-        asked_questions = "<br>".join(map(str, data['asked_questions']))
+        asked_questions = len(data['asked_questions'])
         table_html += f"<tr><td>{chat_id}</td><td>{data['user_id']}</td><td>{data['user_name']}</td><td>{data['full_name']}</td><td>{asked_questions}</td></tr>"
     table_html += "</table>"
     return table_html
@@ -243,12 +243,13 @@ async def get_active_users():
     if not active_users:
         return "<h2>No active users found.</h2>"
 
-    table_html = "<h2>Active Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Last Poll Time</th><th>Asked Questions</th></tr>"
+    table_html = "<h2>Active Users</h2><table border='1'><tr><th>Chat ID</th><th>User ID</th><th>Username</th><th>Full Name</th><th>Last Poll Time</th><th>Questions Asked</th></tr>"
     for chat_id, data in active_users.items():
-        asked_questions = "<br>".join(map(str, data['asked_questions']))
+        asked_questions = len(data['asked_questions'])
         table_html += f"<tr><td>{chat_id}</td><td>{data['user_id']}</td><td>{data['user_name']}</td><td>{data['full_name']}</td><td>{data['last_poll_time']}</td><td>{asked_questions}</td></tr>"
     table_html += "</table>"
     return table_html
+
 
 @app.post("/webhook")
 async def receive_update(request: Request):
