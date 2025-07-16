@@ -116,6 +116,7 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         correct_answer = question_data['answer']
         correct_option_id = options.index(correct_answer)
 
+        # Send the poll first
         await context.bot.send_poll(
             chat_id=chat_id,
             question=question,
@@ -123,17 +124,21 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
             is_anonymous=False,
             type='quiz',
             correct_option_id=correct_option_id,
-            explanation=explanation[:200] if explanation else None,
-            explanation_parse_mode="MarkdownV2"
         )
 
+        # Escape all Markdown special characters in the explanation
         if explanation:
-            safe_explanation = escape_markdown(explanation)
+            escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+            for char in escape_chars:
+                explanation = explanation.replace(char, f'\\{char}')
+            
+            # Send the explanation as a spoiler message
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=f"Poll Explanation:\n\n||{safe_explanation}||",
+                text=f"Poll Explanation:\n\n||{explanation}||",
                 parse_mode="MarkdownV2"
             )
+
     except BadRequest as e:
         logger.error(f"Failed to send poll to {chat_id}: {str(e)}")
         await context.bot.send_message(
@@ -142,6 +147,7 @@ async def send_poll_to_user(chat_id, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.error(f"Unexpected error sending poll to {chat_id}: {str(e)}")
+
 
 async def poll_scheduler(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now()
