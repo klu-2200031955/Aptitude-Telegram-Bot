@@ -283,32 +283,27 @@ async def shutdown_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return """
+    return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Bot Status</title>
         <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            h1 { color: #4CAF50; }
-            .status { margin: 20px; padding: 20px; border-radius: 5px; background: #f5f5f5; }
+            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+            h1 {{ color: #4CAF50; }}
+            .status {{ margin: 20px; padding: 20px; border-radius: 5px; background: #f5f5f5; }}
         </style>
     </head>
     <body>
         <h1>Bot is Running</h1>
         <div class="status">
-            <p>Active users: {active}</p>
-            <p>Total users: {total}</p>
-            <p>Last updated: {time}</p>
+            <p>Active users: {len(active_users)}</p>
+            <p>Total users: {len(users)}</p>
+            <p>Last updated: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}</p>
         </div>
     </body>
     </html>
-    """.format(
-        active=len(active_users),
-        total=len(users),
-        time=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    )
-
+    """
 @app.head("/")
 async def head_root():
     return Response(status_code=200)
